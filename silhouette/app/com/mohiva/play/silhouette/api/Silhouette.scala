@@ -363,13 +363,21 @@ trait Silhouette[I <: Identity, A <: Authenticator] extends Controller with Logg
     protected def invokeBlock[B, T](block: SecuredRequest[B] => Future[HandlerResult[T]])(implicit request: Request[B]): Future[HandlerResult[T]] = {
       handleAuthentication.flatMap {
         // A user is both authenticated and authorized. The request will be granted
-        case (Some(authenticator), Some(identity)) if authorize.isEmpty || authorize.get.isAuthorized(identity) =>
+        case (Some(authenticator), Some(identity)) if authorize.isEmpty =>
           env.eventBus.publish(AuthenticatedEvent(identity, request, request2Messages))
           handleBlock(authenticator, a => block(SecuredRequest(identity, a, request)))
-        // A user is authenticated but not authorized. The request will be forbidden
         case (Some(authenticator), Some(identity)) =>
-          env.eventBus.publish(NotAuthorizedEvent(identity, request, request2Messages))
-          handleBlock(authenticator, _ => handleNotAuthorized(request).map(r => HandlerResult(r)))
+          authorize.get.isAuthorized(identity).flatMap(r =>
+            if (r) {
+              // A user is both authenticated and authorized. The request will be granted
+              env.eventBus.publish(AuthenticatedEvent(identity, request, request2Messages))
+              handleBlock(authenticator, a => block(SecuredRequest(identity, a, request)))
+            } else {
+              // A user is authenticated but not authorized. The request will be forbidden
+              env.eventBus.publish(NotAuthorizedEvent(identity, request, request2Messages))
+              handleBlock(authenticator, _ => handleNotAuthorized(request).map(r => HandlerResult(r)))
+            }
+          )
         // An authenticator but no user was found. The request will ask for authentication and the authenticator will be discarded
         case (Some(authenticator), None) =>
           env.eventBus.publish(NotAuthenticatedEvent(request, request2Messages))
