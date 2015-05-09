@@ -74,12 +74,12 @@ object Authorization {
      */
     def &&(authorization: Authorization[I]): Authorization[I] = new Authorization[I] {
       def isAuthorized(identity: I)(implicit request: RequestHeader, messages: Messages): Future[Boolean] = {
-        val ff1 = self.isAuthorized(identity)
-        val ff2 = authorization.isAuthorized(identity)
+        val leftF = self.isAuthorized(identity)
+        val rightF = authorization.isAuthorized(identity)
         for {
-          f1 <- ff1
-          f2 <- ff2
-        } yield f1 && f2
+          left <- leftF
+          right <- rightF
+        } yield left && right
       }
     }
 
@@ -91,12 +91,12 @@ object Authorization {
      */
     def ||(authorization: Authorization[I]): Authorization[I] = new Authorization[I] {
       def isAuthorized(identity: I)(implicit request: RequestHeader, messages: Messages): Future[Boolean] = {
-        val ff1 = self.isAuthorized(identity)
-        val ff2 = authorization.isAuthorized(identity)
+        val leftF = self.isAuthorized(identity)
+        val rightF = authorization.isAuthorized(identity)
         for {
-          f1 <- ff1
-          f2 <- ff2
-        } yield f1 && f2
+          left <- leftF
+          right <- rightF
+        } yield left || right
       }
     }
   }

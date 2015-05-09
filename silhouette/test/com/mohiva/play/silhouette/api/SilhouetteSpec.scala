@@ -145,7 +145,7 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
       env.identityService.retrieve(identity.loginInfo) returns Future.successful(Some(identity))
 
       withEvent[NotAuthorizedEvent[FakeIdentity]] {
-        val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = Future.successful(false)))
+        val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = false))
         val result = controller.securedActionWithAuthorization(request)
 
         status(result) must equalTo(FORBIDDEN)
@@ -172,20 +172,19 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
         contentAsString(result) must contain(resultContent)
       }
 
-      val andAuthorization = SimpleAuthorization(isAuthorized = Future.successful(true)) && SimpleAuthorization(isAuthorized = Future.successful(true))
+      val andAuthorization = SimpleAuthorization(isAuthorized = true) && SimpleAuthorization(isAuthorized = true)
       isAuthorized(andAuthorization, isAuth = true)
 
-      val orAuthorization = SimpleAuthorization(isAuthorized = Future.successful(false)) || SimpleAuthorization(isAuthorized = Future.successful(true))
+      val orAuthorization = SimpleAuthorization(isAuthorized = false) || SimpleAuthorization(isAuthorized = true)
       isAuthorized(orAuthorization, isAuth = true)
 
-      val notAuthorization = !SimpleAuthorization(isAuthorized = Future.successful(false))
+      val notAuthorization = !SimpleAuthorization(isAuthorized = false)
       isAuthorized(notAuthorization, isAuth = true)
 
-      val complexAuthorization = SimpleAuthorization(isAuthorized = Future.successful(false)) ||
-        !SimpleAuthorization(isAuthorized = Future.successful(true)) &&
-        SimpleAuthorization(isAuthorized = Future.successful(false))
+      val complexAuthorization = SimpleAuthorization(isAuthorized = false) ||
+        !SimpleAuthorization(isAuthorized = true) &&
+        SimpleAuthorization(isAuthorized = false)
       isAuthorized(complexAuthorization, isAuth = false)
-
     }
 
     "display local not-authorized result if user isn't authorized" in new WithSecuredGlobal {
@@ -196,7 +195,7 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
       }
       env.identityService.retrieve(identity.loginInfo) returns Future.successful(Some(identity))
 
-      val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = Future.successful(false))) {
+      val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = false)) {
         override def onNotAuthorized(request: RequestHeader): Option[Future[Result]] = {
           Some(Future.successful(Forbidden("local.not.authorized")))
         }
@@ -218,7 +217,7 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
       }
       env.identityService.retrieve(identity.loginInfo) returns Future.successful(Some(identity))
 
-      val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = Future.successful(false)))
+      val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = false))
       val result = controller.securedActionWithAuthorization(request)
 
       status(result) must equalTo(FORBIDDEN)
@@ -235,7 +234,7 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
       }
       env.identityService.retrieve(identity.loginInfo) returns Future.successful(Some(identity))
 
-      val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = Future.successful(false)))
+      val controller = new SecuredController(env, SimpleAuthorization(isAuthorized = false))
       val result = controller.securedActionWithAuthorization(request)
 
       status(result) must equalTo(FORBIDDEN)
@@ -1051,7 +1050,7 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
    *
    * @param isAuthorized True if the access is authorized, false otherwise.
    */
-  case class SimpleAuthorization(isAuthorized: Future[Boolean] = Future.successful(true)) extends Authorization[FakeIdentity] {
+  case class SimpleAuthorization(isAuthorized: Boolean = true) extends Authorization[FakeIdentity] {
 
     /**
      * Checks whether the user is authorized to execute an action or not.
@@ -1061,6 +1060,8 @@ class SilhouetteSpec extends PlaySpecification with Mockito with JsonMatchers {
      * @param messages The messages for the current language.
      * @return True if the user is authorized, false otherwise.
      */
-    def isAuthorized(identity: FakeIdentity)(implicit request: RequestHeader, messages: Messages): Future[Boolean] = isAuthorized
+    def isAuthorized(identity: FakeIdentity)(implicit request: RequestHeader, messages: Messages): Future[Boolean] = {
+      Future.successful(isAuthorized)
+    }
   }
 }
